@@ -69,6 +69,7 @@ public class TabulatedFunctions {
         } finally {
         }
     }
+
     public static void setTabulatedFunctionFactory(TabulatedFunctionFactory factory){
         TabulatedFunctions.factory = factory;
     }
@@ -137,6 +138,45 @@ public class TabulatedFunctions {
         throw new IOException("Неожиданный конец потока: данные неполные", e);
         } catch (IllegalArgumentException e) {
         throw new IOException("Некорректные данные: " + e.getMessage(), e);
+        } finally {
+
+        }
+    }
+    public static TabulatedFunction inputTabulatedFunction(InputStream in, Class<?extends TabulatedFunction> functionClass)throws IOException {
+        DataInputStream dataIn = new DataInputStream(in);
+        try {
+            int pointsCount = dataIn.readInt();
+
+            if (pointsCount < 2) {
+                throw new IOException("Некорректные данные: количество точек должно быть не менее 2");
+            }
+
+            double[] xValues = new double[pointsCount];
+            double[] yValues = new double[pointsCount];
+            for (int i = 0; i < pointsCount; i++) {
+                xValues[i] = dataIn.readDouble();
+                yValues[i] = dataIn.readDouble();
+            }
+
+            for (int i = 1; i < pointsCount; i++) {
+                if (xValues[i] <= xValues[i - 1]) {
+                    throw new IOException("Некорректные данные: значения X должны быть упорядочены по возрастанию");
+                }
+            }
+            double leftX = xValues[0];
+            double rightX = xValues[xValues.length - 1];
+            try {
+                Constructor<? extends TabulatedFunction> constructor = functionClass.getConstructor(double.class, double.class, int.class);
+                return constructor.newInstance(leftX, rightX, pointsCount);
+            } catch (NoSuchMethodException | InstantiationException |
+                     IllegalAccessException | InvocationTargetException e) {
+                throw new IllegalArgumentException("Cannot create tabulated function", e);
+            }
+
+        } catch (EOFException e) {
+            throw new IOException("Неожиданный конец потока: данные неполные", e);
+        } catch (IllegalArgumentException e) {
+            throw new IOException("Некорректные данные: " + e.getMessage(), e);
         } finally {
 
         }
